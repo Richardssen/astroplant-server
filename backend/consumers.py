@@ -13,31 +13,30 @@ class MeasurementSubscribeConsumer(WebsocketConsumer):
     subscribe to measurements of kits they own.
     """
     def connect(self):
-        if not 'user' in self.scope:
+        if 'user' not in self.scope:
             # Reject channel
             return
 
         self.user = self.scope['user']
 
-        if not 'kit_name' in self.scope['url_route']['kwargs']:
+        if 'kit_name' not in self.scope['url_route']['kwargs']:
             # Reject channel
             return
 
         self.kit = backend.models.Kit.objects.get(username=self.scope['url_route']['kwargs']['kit_name'])
-        
+
         if self.user.has_perm('backend.subscribe_to_kit_measurements_websocket', self.kit):
             async_to_sync(self.channel_layer.group_add)(
-                "kit-measurements-%s" % self.kit.username,
-                self.channel_name
+                f"kit-measurements-{self.kit.username}", self.channel_name
             )
+
 
             self.accept()
 
     def disconnect(self, close_code):
         # Leave group
         async_to_sync(self.channel_layer.group_discard)(
-            "kit-measurements-%s" % self.kit.username,
-            self.channel_name
+            f"kit-measurements-{self.kit.username}", self.channel_name
         )
 
     def measurement(self, event):
@@ -55,7 +54,7 @@ class KitConsumer(WebsocketConsumer):
     The channel can be used to, for example, publish measurements.
     """
     def connect(self):
-        if not 'user' in self.scope:
+        if 'user' not in self.scope:
             # Reject channel
             return
 
@@ -112,9 +111,10 @@ class KitConsumer(WebsocketConsumer):
             # Add peripheral to the measurement object
             measurement.peripheral = peripheral
 
-            # Get the registered measurement type by the physical quantity and physical unit if it exists
-            quantity_types_qs = peripheral.peripheral_definition.quantity_types.filter(physical_quantity = measurement.physical_quantity, physical_unit = measurement.physical_unit)
-            if quantity_types_qs:
+            if quantity_types_qs := peripheral.peripheral_definition.quantity_types.filter(
+                physical_quantity=measurement.physical_quantity,
+                physical_unit=measurement.physical_unit,
+            ):
                 quantity_type = quantity_types_qs.first()
                 measurement.quantity_type = quantity_type
 
@@ -125,12 +125,10 @@ class KitConsumer(WebsocketConsumer):
             output_serializer = backend.serializers.MeasurementOutputSerializer(measurement)
             message = {'measurement_type': measurement_type, 'measurement': output_serializer.data}
             async_to_sync(self.channel_layer.group_send)(
-                "kit-measurements-%s" % self.kit.username,
-                {
-                    'type': 'measurement',
-                    'message': message
-                }
+                f"kit-measurements-{self.kit.username}",
+                {'type': 'measurement', 'message': message},
             )
+
             send_reply({"success": "published"})
         except Exception as exception:
             send_reply({"error": "You must provide a valid measurement.'."})

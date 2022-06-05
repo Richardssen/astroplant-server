@@ -8,7 +8,7 @@ register = template.Library()
 @register.simple_tag
 def navigation_active(request, urls):
     r = resolve(request.path_info)
-    name = "%s:%s" % (r.namespace, r.url_name)
+    name = f"{r.namespace}:{r.url_name}"
     if name in urls.split():
         return "active"
     return ""
@@ -18,7 +18,7 @@ def root_url(request):
     absolute_uri = request.build_absolute_uri()
 
     # Remove trailing slash
-    absolute_uri = absolute_uri[0:-1]
+    absolute_uri = absolute_uri[:-1]
     return absolute_uri
 
 @register.simple_tag

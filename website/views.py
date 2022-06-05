@@ -71,17 +71,11 @@ def kit_download(request, kit_id):
         
         def write_to_csv(zip, filename, queryset):
             buffer = StringIO()
-            n = 0
-            for model_values in queryset:
+            for n, model_values in enumerate(queryset):
                 if n == 0:
                     writer = csv.DictWriter(buffer, model_values.keys())
                     writer.writeheader()
-                    writer.writerow(model_values)
-                else:
-                    writer.writerow(model_values)
-                
-                n += 1
-            
+                writer.writerow(model_values)
             zip.writestr(filename, buffer.getvalue())
         
         with zipfile.ZipFile(response, 'w', zipfile.ZIP_DEFLATED) as zip:
@@ -155,28 +149,37 @@ def kit_configure_members(request, kit_id):
     if not kit or not request.user.has_perm('backend.configure_kit', kit):
         return render(request, 'website/kit_configure_not_found.html')
 
-    Form = django.forms.modelform_factory(backend.models.KitMembership,
-                                        fields = ('user',),
-                                        labels = {'user': 'Add another user to %s' % kit.name},
-                                        widgets = {'user': autocomplete.Select2(url='website:autocomplete-users', attrs={'data-html': True})})
+    Form = django.forms.modelform_factory(
+        backend.models.KitMembership,
+        fields=('user',),
+        labels={'user': f'Add another user to {kit.name}'},
+        widgets={
+            'user': autocomplete.Select2(
+                url='website:autocomplete-users', attrs={'data-html': True}
+            )
+        },
+    )
+
 
     if request.method == 'POST':
         if request.POST.get('remove_user'):
             user_to_remove = request.POST.get('remove_user')
-            membership = kit.memberships.filter(user=user_to_remove).first()
-            if membership:
+            if membership := kit.memberships.filter(
+                user=user_to_remove
+            ).first():
                 membership.delete()
                 messages.add_message(request, messages.SUCCESS, 'The user has been removed.')
-            else: 
+            else:
                 messages.add_message(request, messages.ERROR, 'The user could not be found.')
         elif request.POST.get('add_user'):
             form = Form(request.POST)
-            
+
             if form.is_valid():
                 membership = form.save(commit = False)
 
-                existing_membership = kit.memberships.filter(user=membership.user)
-                if existing_membership:
+                if existing_membership := kit.memberships.filter(
+                    user=membership.user
+                ):
                     messages.add_message(request, messages.ERROR, 'That user already is a member.')
                 else:
                     membership.kit = kit
@@ -184,7 +187,7 @@ def kit_configure_members(request, kit_id):
                     messages.add_message(request, messages.SUCCESS, 'The user has been added.')
 
     form = Form()
-    
+
     memberships = kit.memberships.all()
     context = {'kit': kit, 'memberships': memberships, 'form': form}
     return render(request, 'website/kit_configure_members.html', context)
@@ -223,29 +226,32 @@ def kit_configure_peripherals(request, kit_id):
     if request.method == 'POST':
         if request.POST.get('deactivate_peripheral'):
             peripheral_id = request.POST.get('deactivate_peripheral')
-            peripheral = kit.peripherals.filter(id=peripheral_id, active=True).first()
-            if peripheral:
+            if peripheral := kit.peripherals.filter(
+                id=peripheral_id, active=True
+            ).first():
                 peripheral.active = False;
                 peripheral.save()
                 messages.add_message(request, messages.SUCCESS, 'The peripheral has been deactivated.')
-            else: 
+            else:
                 messages.add_message(request, messages.ERROR, 'The peripheral could not be found.')
         elif request.POST.get('activate_peripheral'):
             peripheral_id = request.POST.get('activate_peripheral')
-            peripheral = kit.peripherals.filter(id=peripheral_id, active=False).first()
-            if peripheral:
+            if peripheral := kit.peripherals.filter(
+                id=peripheral_id, active=False
+            ).first():
                 peripheral.active = True;
                 peripheral.save()
                 messages.add_message(request, messages.SUCCESS, 'The peripheral has been activated.')
-            else: 
+            else:
                 messages.add_message(request, messages.ERROR, 'The peripheral could not be found.')
         elif request.POST.get('permanently_remove_peripheral'):
             peripheral_id = request.POST.get('permanently_remove_peripheral')
-            peripheral = kit.peripherals.filter(id=peripheral_id, active=False).first()
-            if peripheral:
+            if peripheral := kit.peripherals.filter(
+                id=peripheral_id, active=False
+            ).first():
                 peripheral.delete()
                 messages.add_message(request, messages.SUCCESS, 'The peripheral has been removed.')
-            else: 
+            else:
                 messages.add_message(request, messages.ERROR, 'The peripheral could not be found.')
 
     context = {'kit': kit,
@@ -289,7 +295,7 @@ def kit_configure_peripherals_add_step2(request, kit_id, peripheral_definition_i
     if not kit or not request.user.has_perm('backend.configure_kit', kit):
         return render(request, 'website/kit_configure_not_found.html')
 
-    
+
 
     try:
         peripheral_definition = backend.models.PeripheralDefinition.objects.get(pk=peripheral_definition_id)
@@ -319,7 +325,11 @@ def kit_configure_peripherals_add_step2(request, kit_id, peripheral_definition_i
 
     if request.method == 'POST':
         peripheral_form = PeripheralForm(request.POST)
-        peripheral_configuration_form_set = PeripheralConfigurationFormSet(request.POST, initial = [{} for peripheral_configuration_definition in peripheral_configuration_definitions])
+        peripheral_configuration_form_set = PeripheralConfigurationFormSet(
+            request.POST,
+            initial=[{} for _ in peripheral_configuration_definitions],
+        )
+
 
         if peripheral_form.is_valid() and peripheral_configuration_form_set.is_valid():
             peripheral = peripheral_form.save(commit=False)
@@ -364,7 +374,12 @@ def kit_configure_access(request, kit_id):
         kit.set_password(secret)
         kit.save()
 
-        messages.add_message(request, messages.SUCCESS, 'A new secret has been generated: %s' % secret)
+        messages.add_message(
+            request,
+            messages.SUCCESS,
+            f'A new secret has been generated: {secret}',
+        )
+
     else:
         secret = None
 
@@ -405,9 +420,6 @@ def kit_configure_danger_zone(request, kit_id):
 
 @decorators.login_required
 def kit_add(request):
-    #: The length of the kit identifier to be generated
-    RANDOM_KIT_IDENTIFIER_LENGTH = 8
-
     if request.method == 'POST':
         form = website.forms.AddKitForm(request.POST)
 
@@ -417,13 +429,17 @@ def kit_add(request):
 
             # Generate a unique kit identifier (username/serial)
             import random
+            #: The length of the kit identifier to be generated
+            RANDOM_KIT_IDENTIFIER_LENGTH = 8
+
             while True:
                 # Generate a unique identifier without vowels to minimize the chance 
                 # of generating bad words :)
                 # also 0, (o), 1, l, 2, z, 5, s are removed, as they look similar
                 # Identifiers look like: "k.6g77mnyp"
-                identifier = 'k.%s' % ''.join(random.choice('346789bcdfghjkmnpqrtvwxy') for i in range(RANDOM_KIT_IDENTIFIER_LENGTH))
-                
+                identifier = f"k.{''.join(random.choice('346789bcdfghjkmnpqrtvwxy') for _ in range(RANDOM_KIT_IDENTIFIER_LENGTH))}"
+
+
                 # Test if the random identifier already exists
                 if len(backend.models.Kit.objects.filter(username=identifier)) == 0:
                     # If not, break the loop (generally happens immediately)
@@ -510,13 +526,12 @@ def peripheral_definition_configure(request, peripheral_definition_id):
         # Save the peripheral device configuration definitions
         form_set.save()
 
-        # Generate a new form set
-        form_set = PeripheralConfigurationDefinitionFormSet(instance=peripheral_definition)
-        return render(request, 'website/peripheral_definition_configure.html', {'peripheral_definition': peripheral_definition, 'form': form, 'form_set': form_set})
     else:
         form = PeripheralDefinitionForm(instance=peripheral_definition)
-        form_set = PeripheralConfigurationDefinitionFormSet(instance=peripheral_definition)
-        return render(request, 'website/peripheral_definition_configure.html', {'peripheral_definition': peripheral_definition, 'form': form, 'form_set': form_set})
+
+    # Generate a new form set
+    form_set = PeripheralConfigurationDefinitionFormSet(instance=peripheral_definition)
+    return render(request, 'website/peripheral_definition_configure.html', {'peripheral_definition': peripheral_definition, 'form': form, 'form_set': form_set})
 
 class LoginView(AnonymousRequiredMixin, auth_views.LoginView):
     authenticated_redirect_url = reverse_lazy(u'website:dashboard')
