@@ -87,9 +87,8 @@ class ExperimentViewSet(viewsets.GenericViewSet,
         user = self.request.user
         if isinstance(user, models.Kit):
             return models.Experiment.objects.filter(kit=user.pk)
-        else:
-            kits = models.Kit.kits.owned_by(user.pk)
-            return models.Experiment.objects.filter(kit__in=kits)
+        kits = models.Kit.kits.owned_by(user.pk)
+        return models.Experiment.objects.filter(kit__in=kits)
 
     serializer_class = serializers.HyperlinkedExperimentSerializer
 
@@ -153,9 +152,8 @@ class PeripheralViewSet(viewsets.GenericViewSet,
         user = self.request.user
         if isinstance(user, models.Kit):
             return models.Peripheral.objects.filter(kit=user.pk)
-        else:
-            kits = models.Kit.kits.owned_by(user.pk)
-            return models.Peripheral.objects.filter(kit__in=kits)
+        kits = models.Kit.kits.owned_by(user.pk)
+        return models.Peripheral.objects.filter(kit__in=kits)
 
     serializer_class = serializers.HyperlinkedPeripheralSerializer
 
@@ -183,9 +181,8 @@ class MeasurementViewSet(viewsets.GenericViewSet,
         user = self.request.user
         if isinstance(user, models.Kit):
             return models.Measurement.objects.filter(kit=user.pk)
-        else:
-            kits = models.Kit.kits.owned_by(user.pk)
-            return models.Measurement.objects.filter(kit__in=kits)
+        kits = models.Kit.kits.owned_by(user.pk)
+        return models.Measurement.objects.filter(kit__in=kits)
 
     serializer_class = serializers.HyperlinkedMeasurementSerializer
     permission_classes = [permissions.IsNotCreationOrIsAuthenticatedKit, ]

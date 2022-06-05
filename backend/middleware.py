@@ -19,8 +19,7 @@ class TokenMiddleware(object):
 
     def __call__(self, request):
         self.process_request(request)
-        response = self.get_response(request)
-        return response
+        return self.get_response(request)
 
     def process_request(self, request):
         auth_header = request.META.get('HTTP_AUTHORIZATION', b'').split()
@@ -28,8 +27,7 @@ class TokenMiddleware(object):
         if not auth_header:
             return None
 
-        user = auth.authenticate()
-        if user:
+        if user := auth.authenticate():
             request.user = user
 
 class JWTAuthMiddleware(BaseMiddleware):
@@ -48,11 +46,11 @@ class JWTAuthMiddleware(BaseMiddleware):
         if not scope["user"]._wrapped.is_anonymous:
             return
 
-        if not "query_string" in scope:
+        if "query_string" not in scope:
             return
 
         qs = urllib.parse.parse_qs(scope['query_string'].decode('utf-8'))
-        
+
         user = None
         try:
             qs['token'] = qs['token'][0]

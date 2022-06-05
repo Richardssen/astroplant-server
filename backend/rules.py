@@ -6,20 +6,18 @@ def is_public_kit(user, kit):
     """
     Predicate defining whether a kit is public or not.
     """
-    if not isinstance(kit, backend.models.Kit):
-        return False
-
-    return kit.privacy_public_dashboard
+    return (
+        kit.privacy_public_dashboard
+        if isinstance(kit, backend.models.Kit)
+        else False
+    )
 
 @rules.predicate
 def is_target(user, obj):
     """
     Predicate defining whether the user is exactly the target object.
     """
-    if not user or not obj:
-        return False
-
-    return user == obj
+    return False if not user or not obj else user == obj
 
 @rules.predicate
 def is_kit_member(user, kit):
@@ -36,10 +34,13 @@ def is_public_peripheral_definition(user, peripheral_definition):
     """
     Predicate defining whether a peripheral device definition is public or not.
     """
-    if not isinstance(peripheral_definition, backend.models.PeripheralDefinition):
-        return False
-
-    return peripheral_definition.public
+    return (
+        peripheral_definition.public
+        if isinstance(
+            peripheral_definition, backend.models.PeripheralDefinition
+        )
+        else False
+    )
 
 @rules.predicate
 def is_peripheral_definition_owner(user, peripheral_definition):

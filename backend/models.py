@@ -28,7 +28,10 @@ def _generate_gravatar_alternative():
 
     RANDOM_STRING_LENGTH = 125
 
-    return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz0123456789') for i in range(RANDOM_STRING_LENGTH))
+    return ''.join(
+        random.choice('abcdefghijklmnopqrstuvwxyz0123456789')
+        for _ in range(RANDOM_STRING_LENGTH)
+    )
 
 
 class PersonUser(User):
@@ -97,8 +100,14 @@ class Kit(User):
         """
         peripherals_and_quantity_types = []
         for peripheral in self.active_peripherals():
-            for quantity_type in peripheral.peripheral_definition.quantity_types.all():
-                peripherals_and_quantity_types.append((peripheral, quantity_type,))
+            peripherals_and_quantity_types.extend(
+                (
+                    peripheral,
+                    quantity_type,
+                )
+                for quantity_type in peripheral.peripheral_definition.quantity_types.all()
+            )
+
         return peripherals_and_quantity_types
 
     def recent_measurements(self, since = None, max_measurements = None):
@@ -122,7 +131,7 @@ class Kit(User):
                 measurements[peripheral][quantity_type] = reversed(self.measurements.filter(peripheral=peripheral,quantity_type=quantity_type,date_time__gte=since).order_by('-date_time')[:max_measurements])
             else:
                 measurements[peripheral][quantity_type] = self.measurements.filter(peripheral=peripheral,quantity_type=quantity_type,date_time__gte=since).order_by('date_time')
-                        
+
         return dict(measurements)
 
     def generate_config(self):
@@ -178,7 +187,10 @@ class Kit(User):
         # Generate a password without vowels to minimize the chance 
         # of generating bad words :)
         # also 0, (o), 1, l, 2, z, 5, s are removed, as they look similar
-        return ''.join(random.choice('346789bcdfghjkmnpqrtvwxyBCDFGHJKMNPQRTVWXY!@#$%&') for i in range(RANDOM_KIT_PASSWORD_LENGTH))
+        return ''.join(
+            random.choice('346789bcdfghjkmnpqrtvwxyBCDFGHJKMNPQRTVWXY!@#$%&')
+            for _ in range(RANDOM_KIT_PASSWORD_LENGTH)
+        )
 
 class Experiment(models.Model):
     """
@@ -197,7 +209,7 @@ class KitMembership(models.Model):
     date_time_linked = models.DateTimeField(default=datetime.datetime.now)
 
     def __str__(self):
-        return "%s - %s" % (self.kit, self.user)
+        return f"{self.kit} - {self.user}"
     
 class QuantityType(models.Model):
     """
@@ -209,7 +221,7 @@ class QuantityType(models.Model):
     physical_unit_symbol = models.CharField(max_length = 100)
 
     def __str__(self):
-        return "%s (%s)" % (self.physical_quantity, self.physical_unit)
+        return f"{self.physical_quantity} ({self.physical_unit})"
 
 class PeripheralDefinition(models.Model):
     """
@@ -248,7 +260,7 @@ class PeripheralConfigurationDefinition(models.Model):
     description = models.TextField()
 
     def __str__(self):
-        return "%s - %s" % (self.peripheral_definition, self.name)
+        return f"{self.peripheral_definition} - {self.name}"
 
 class Peripheral(models.Model):
     """
@@ -281,7 +293,7 @@ class PeripheralConfiguration(models.Model):
     value = models.CharField(max_length = 100, blank = True)
 
     def __str__(self):
-        return "%s - %s" % (self.peripheral, self.peripheral_configuration_definition)
+        return f"{self.peripheral} - {self.peripheral_configuration_definition}"
 
 class Measurement(models.Model):
     """
